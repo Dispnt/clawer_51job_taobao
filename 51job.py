@@ -98,7 +98,7 @@ class Crawler(object):
             return None
         bs = BeautifulSoup(info, 'lxml')
         if (detail_div := bs.find('div', class_='con_txt')) is not None:
-            detail = detail_div.get_text()
+            detail = detail_div.get_text(strip=True)
         else:
             detail = None
         return detail
