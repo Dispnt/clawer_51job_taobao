@@ -7,21 +7,24 @@ import base64
 import re
 import pymongo
 
+
 class Crawler(object):
-    def __init__(self, search_content='美食'):
+    def __init__(self, search_content='美食', qr_code=False):
         self.search_content = search_content
+        self.qr_code = qr_code
         client = pymongo.MongoClient('127.0.0.1')
         self.db = client['taobao']
-        # options = webdriver.ChromeOptions()
-        # options.add_experimental_option('excludeSwitches', ['enable-automation'])
 
-        self.browser = webdriver.Chrome()# options=options
+        options = webdriver.ChromeOptions()
+        options.add_experimental_option('excludeSwitches', ['enable-automation'])
+
+        self.browser = webdriver.Chrome(options=options)
         self.wait = WebDriverWait(self.browser, 20)
         self.browser.get('http://www.taobao.com/')
 
-    def save_to_mongo(self ,result, table_name='product'):
+    def save_to_mongo(self, result, table_name):
         try:
-            if self.db[table_name].insert_one(result): # insert is deprecated
+            if self.db[table_name].insert_one(result):
                 print('保存成功', result)
         except Exception:
             print('失败辣', result)
@@ -39,8 +42,8 @@ class Crawler(object):
     def login_by_pwd(self):
         login_account = self.wait.until(EC.presence_of_element_located((By.XPATH, '//*[@id="fm-login-id"]')))
         login_pwd = self.wait.until(EC.presence_of_element_located((By.XPATH, '//*[@id="fm-login-password"]')))
-        account_info = '=='.encode()
-        pwd_info = '=='.encode()
+        account_info = ''.encode()
+        pwd_info = ''.encode()
         login_account.send_keys(base64.b64decode(account_info).decode())
         login_pwd.send_keys(base64.b64decode(pwd_info).decode())
         login_submit = self.wait.until(
@@ -53,7 +56,7 @@ class Crawler(object):
         page = BeautifulSoup(html, 'lxml')
         return page
 
-    def get_total(self,page_content):
+    def get_total(self, page_content):
         current_n_all = page_content.find('span', class_='current').parent.get_text()
         return current_n_all.split('/')[1]
 
@@ -72,7 +75,7 @@ class Crawler(object):
                 'shop': item.find('a', class_='shopname').get_text().strip(),
                 'location': item.find('div', class_='location').get_text()
             }
-            self.save_to_mongo(product,self.search_content)
+            self.save_to_mongo(product, self.search_content)
 
     def next_page(self, page_number):
         input = self.wait.until(
@@ -96,7 +99,10 @@ class Crawler(object):
 
     def run(self):
         self.search_first_page()
-        self.login_by_pwd()
+        if not self.qr_code:
+            self.login_by_pwd()
+        else:
+            self.login_alipay_scan()
         item_list = self.get_item_list(result_page := self.get_search_page())
         self.extract_save_item(item_list)
 
@@ -104,9 +110,9 @@ class Crawler(object):
         for i in range(2, int(total) + 1):
             self.next_page(i)
 
-f18011433 = Crawler('soundcore liberty 2 pro')
-f18011433.run()
-
+if __name__ == '__main__':
+    job = Crawler('美食', qr_code=False)
+    job.run()
 
 # page = 2
 # query = ""

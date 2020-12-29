@@ -106,10 +106,18 @@ class Crawler(object):
     def write_job(self, info):
         write_csv(self.file, info)
 
-    def thread_save(self, current_page, json_content):
+    def get_save(self, current_page, json_content):
         for i in range(0, len(json_content)):
             job_info = self.get_job(json_content[i], current_page)
             self.write_job(job_info)
+
+    def thread_get_save(self, worker):
+        print(f'启动进程{threading.currentThread().getName()}')
+        for page in worker:
+            if page == 1:
+                continue
+            json_content = self.get_job_json(page)
+            self.get_save(page, json_content)
 
     def run(self):
         total_page = 3
@@ -120,21 +128,18 @@ class Crawler(object):
                 print(f'一共{total_page}页')
             else:
                 json_content = self.get_job_json(current_page)
-            self.thread_save(current_page, json_content)
+            self.get_save(current_page, json_content)
             current_page += 1
 
     def run_thread(self):
         current_page = 1
         (json_content, total_page) = self.get_job_json(current_page)
         print(f'一共{total_page}页')
-        threading.Thread(target=self.thread_save, args=(current_page, json_content)).start()
+        threading.Thread(target=self.get_save, args=(current_page, json_content)).start()
         workers = self.thread_worker(total_page)
         for worker in workers:
-            for page in worker:
-                if page == 1:
-                    continue
-                json_content = self.get_job_json(page)
-                threading.Thread(target=self.thread_save, args=(page, json_content)).start()
+            thread_name = worker[0]
+            threading.Thread(target=self.thread_get_save, name=thread_name, args=[worker]).start()
 
     def thread_worker(self, total_page):
         worker1 = []
@@ -166,5 +171,5 @@ if __name__ == '__main__':
         if input('你的城市是默认值上海,要不要换一下? Y/n:').upper() == 'Y':
             args.city = input('那要去哪儿搬砖:')
 
-    f18011433 = Crawler(args.job, args.city)
-    f18011433.run_thread()
+    taobao = Crawler(args.job, args.city)
+    taobao.run_thread()
